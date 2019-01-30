@@ -1,0 +1,53 @@
+---
+swagger: "2.0"
+info:
+  description: This API returns a json, containing a list of app reviews from the Google Play store.
+  version: "1.0.0"
+  title: Get Tweets
+  contact:
+    email: stanik@informatik.uni-hamburg.de
+host: 217.172.12.199:9621
+schemes:
+- http
+paths:
+  /hitec/crawl/app-reviews/google-play/{package_name}/limit/{limit}:
+    get:
+      description: Get a defined number of app reviews for a specific app.
+      operationId: getAppReviews
+      produces:
+      - application/json
+      parameters:
+      - name: package_name
+        in: path
+        description: the unique package name of the app.
+        required: true
+        type: string
+      - name: limit
+        in: path
+        description: maximum number of app reviews to return. 0 must be used if all available app reviews should be crawled.
+        required: true
+        type: integer
+        maximum: 4000
+        minimum: 0
+      responses:
+        200:
+          description: list of tweets.
+          schema:
+            $ref: "#/definitions/AppReview"
+        400:
+          description: bad input parameter or no tweet could be retrieved.
+definitions: 
+   AppReview:
+    type: array
+    items:
+      type: object
+      properties:
+        title:
+          type: string
+          example: My Experience so far
+        body:
+          type: string
+          example: I love this application.
+        rating:
+          type: number
+          example: 4
