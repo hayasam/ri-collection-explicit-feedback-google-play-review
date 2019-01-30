@@ -6,9 +6,9 @@ info:
   title: Get Tweets
   contact:
     email: stanik@informatik.uni-hamburg.de
-host: 217.172.12.199:9621
+host: api.openreq.eu
 schemes:
-- http
+  - https
 paths:
   /hitec/crawl/app-reviews/google-play/{package_name}/limit/{limit}:
     get:
