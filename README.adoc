@@ -2,28 +2,34 @@
 
 This microservice was created as a result of the OpenReq project funded by the European Union Horizon 2020 Research and Innovation programme under grant agreement No 732463.
 
-== Notice:
-This microservice is not maintained.
+== Technical description
+=== What does the microservice do
+*This microservice is not maintained.*
 
-== Used Technologies
+The goal of this microservice is to collect data from the Google Play Store, the official store for Android apps. In particular, this service collects the user reviews of a given app and returns them as a list in JSON format.
+
+=== Which technologies are used
 - Go (-> https://github.com/golang/go)
 - Gorilla Mux (-> https://github.com/gorilla/mux)
 
-== Functionalities 
-The goal of this microservice is to collect data from the Google Play Store, the official store for Android apps. In particular, this service collects the user reviews of a given app and returns them as a list in JSON format.
-
-== How to Run The microservice
+=== How to install it
 Run the following commands to start the microservice:
 
-1) docker build -t ri-collection-explicit-feedback-google-play-review .
+. docker build -t ri-collection-explicit-feedback-google-play-review .
 
-2) docker run -p 9621:9621 ri-collection-explicit-feedback-google-play-review
+. docker run -p 9621:9621 ri-collection-explicit-feedback-google-play-review
 
-== Public APIs
+=== How to use it (high-level description)
 - link:http://217.172.12.199/registry/#/services/ri-collection-explicit-feedback-google-play-review[Rendered Documentation]
 
+=== Notes for developers 
+None.
+
+=== Sources
+None.
+
 == How to contribute
-See OpenReq project contribution link:[guidelines]
+See OpenReq project contribution link:https://github.com/OpenReqEU/OpenReq/blob/master/CONTRIBUTING.md[Guidlines]
 
 == License
 Free use of this software is granted under the terms of the EPL version 2 (EPL2.0).
