@@ -16,14 +16,16 @@ The goal of this microservice is to collect data from the Google Play Store, the
 Run the following commands to start the microservice:
 
 . docker build -t ri-collection-explicit-feedback-google-play-review .
-
+/
 . docker run -p 9621:9621 ri-collection-explicit-feedback-google-play-review
 
 === How to use it (high-level description)
 - link:http://217.172.12.199/registry/#/services/ri-collection-explicit-feedback-google-play-review[Rendered Documentation]
 
 === Notes for developers 
-None.
+*This microservice is not maintained.*
+
+If you deploy this service and get the following error: `runtime error: invalid memory address or nil pointer dereference` it means that the HTML page was updated and that this crawler is not able to access the HTML tags anymore. In case you want to contribute to this service and update it, the file `crawler.go` contains all source code regarding the data extraction of the HTML page from Google Play. For each field of the `AppReview` struct in `model.go`, you'll find a dedicate method in `crawler.go`.
 
 === Sources
 None.
