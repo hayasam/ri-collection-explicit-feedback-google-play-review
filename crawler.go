@@ -93,8 +93,6 @@ func Crawl(packageName string, limit int) []AppReview {
 			review.ReviewID = getReviewID(rDoc)
 			review.Rating = getReviewRating(rDoc)
 
-			getHelpfulness(rDoc)
-
 			reviewsOnPage++
 			appReviews = append(appReviews, review)
 
