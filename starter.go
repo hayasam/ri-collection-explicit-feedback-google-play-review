@@ -21,8 +21,18 @@ func main() {
 	log.Fatal(http.ListenAndServe(":9621", router))
 }
 
+func recoverAPICall(w http.ResponseWriter) {
+	if r := recover(); r != nil {
+		log.Println("recovered from ", r)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(`{"message": "could not retrieve app reviews"}`)
+	}
+}
+
 func getAppReviews(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Get Reviews")
+	defer recoverAPICall(w)
+
 	// get request param
 	params := mux.Vars(r)
 	packageName := params["package_name"]
@@ -39,8 +49,5 @@ func getAppReviews(w http.ResponseWriter, r *http.Request) {
 	if len(appReviews) > 0 {
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(appReviews)
-	} else {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(`{"message": "could not retrieve app reviews"}`)
 	}
 }
