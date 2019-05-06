@@ -71,7 +71,6 @@ func Crawl(packageName string, limit int) []AppReview {
 
 		// extract data from reviews of the html
 		doc := soup.HTMLParse(stringContent)
-		fmt.Println(stringContent)
 
 		// check if the captcha came up
 		captcha := doc.Find("body").Attrs()["onload"]
