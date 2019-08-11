@@ -9,6 +9,7 @@ The goal of this microservice is to collect data from the Google Play Store, the
 === Which technologies are used
 - Go (-> https://github.com/golang/go)
 - Gorilla Mux (-> https://github.com/gorilla/mux)
+- OlegSchmidt soup, fork of anaskhan96 soup (-> fork : https://github.com/OlegSchmidt/soup | original : https://github.com/anaskhan96/soup)
 
 === How to install it
 Run the following commands to start the microservice:
@@ -19,6 +20,16 @@ Run the following commands to start the microservice:
 
 === How to use it (high-level description)
 - link:http://217.172.12.199/registry/#/services/ri-collection-explicit-feedback-google-play-review[Rendered Documentation]
+
+Endpoint "/hitec/crawl/app-reviews/google-play/static/" :
+By using this endpoint you can get all reviews which are shown on Google Play. Sadly, the content is served via JavaScript, so there is no way to actually parse the site in easy way.
+Still, its not impossible. To get the reviews from your (or any) app, you need to follow the steps below :
+1.) Open the page of the app on google play ( for example : https://play.google.com/store/apps/details?id=com.whatsapp )
+2.) click on "read all reviews" and scroll to the bottom of the page
+2.1) if you have a lot of reviews, then at the end of the page there will be button "show more", click on it and repeat 2.1) until this button doesn't appear anymore
+3.) save the site you see by pressing ctrl+s as html and delete the created "_files" directory (if you name the page MyApp then there will be the file MyApp.html and directory MyApp_files)
+4.) make the downloaded html file accessible via web ( for example http://www.my-app-page-copy.com )
+5.) call the endpoint "/hitec/crawl/app-reviews/google-play/static/?target_url=http%3A%2F%2Fwww.my-app-page-copy.com"
 
 === Notes for developers 
 If you deploy this service and get the following error: `runtime error: invalid memory address or nil pointer dereference` it means that the HTML page was updated and that this crawler is not able to access the HTML tags anymore. In case you want to contribute to this service and update it, the file `crawler.go` contains all source code regarding the data extraction of the HTML page from Google Play. For each field of the `AppReview` struct in `model.go`, you'll find a dedicate method in `crawler.go`.

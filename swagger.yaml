@@ -3,7 +3,7 @@ swagger: "2.0"
 info:
   description: This API returns a json, containing a list of app reviews from the Google Play store.
   version: "1.0.0"
-  title: Get Tweets
+  title: Get Reviews
   contact:
     email: stanik@informatik.uni-hamburg.de
 host: api.openreq.eu
@@ -31,23 +31,84 @@ paths:
         minimum: 0
       responses:
         200:
-          description: list of tweets.
+          description: list of reviews.
           schema:
-            $ref: "#/definitions/AppReview"
+            $ref: "#/definitions/AppReviewResponse"
         400:
           description: bad input parameter or no tweet could be retrieved.
-definitions: 
+  /hitec/crawl/app-reviews/google-play/static/:
+    get:
+      description: Get all contained app reviews from the given URL.
+      operationId: getAppReviewsStatic
+      produces:
+        - application/json
+      parameters:
+        - name: url_target
+          in: query
+          description: encoded URL of the site you want to parse
+          required: true
+          type: string
+      responses:
+        200:
+          description: list of tweets.
+          schema:
+            $ref: "#/definitions/AppReviewResponse"
+        400:
+          description: URL is not reachable or the reviews-container couldn't be found
+definitions:
+  AppReviewResponse:
+    type: object
+    properties:
+      status:
+        type: number
+        example: 200
+        description: HTTP response code
+      error:
+        type: string
+        example: "Given URL couldn't be parsed"
+        description: Error message to point out what went wrong
+      reviews:
+        type: array
+        items:
+          $ref: '#/definitions/AppReview'
    AppReview:
-    type: array
-    items:
-      type: object
+    type: object
       properties:
+        review_id:
+          type: string
+          example: gp:AOqpTOH9eJEq3-jnn2A09rSS9YeT2VYirhXf3M_rkNjqNy8z3O4rXc05BV0OhPNz5UBhGtobuuLY9PdkkakvJG0
+          description: gogole play unique review id, not provided anymore while parsing a page
+        package_name:
+          type: string
+          example: com.whatsapp
+          description: unique app id in google play
+        author:
+          type: string
+          example: Google-Play User
+          description: the name of the person who wrote the review
+        date_posted:
+          type: int
+          example: 20190810
+          description: date date of the post as number (YearMonthDay)
+        rating:
+          type: int
+          example: 5
+          description: number of stars the person gave your app (from 1 to 5)
         title:
           type: string
-          example: My Experience so far
+          example: Review's Title
+          description: the optional title of the review
         body:
           type: string
-          example: I love this application.
-        rating:
-          type: number
-          example: 4
+          example: The App is pretty amazing, i love it!
+          description: the actual review provided by the user
+        perma_link:
+          type: string
+          example: https://play.google.com/store/apps/details?id=com.whatsapp&hl=en&reviewId=gp%3AAOqpTOH9eJEq3-jnn2A09rSS9YeT2VYirhXf3M_rkNjqNy8z3O4rXc05BV0OhPNz5UBhGtobuuLY9PdkkakvJG0
+          description: the link to the review, not provided anymore while parsing a page
+        errors:
+          type: array
+          items:
+            type: string
+          example: ["review_id couldn't be set", "perma_link couldn't be set"]
+          description: the errors which eccurred while trying to fill the review object
