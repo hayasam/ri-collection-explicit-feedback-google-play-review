@@ -15,7 +15,7 @@ The goal of this microservice is to collect data from the Google Play Store, the
 Run the following commands to start the microservice:
 
 . docker build -t ri-collection-explicit-feedback-google-play-review .
-/
+
 . docker run -p 9621:9621 ri-collection-explicit-feedback-google-play-review
 
 === How to use it (high-level description)

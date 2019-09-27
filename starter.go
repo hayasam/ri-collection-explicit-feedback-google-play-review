@@ -14,33 +14,18 @@ import (
 )
 
 const (
-	modeApi             = "api"
-	modeHtml            = "html"
 	errorRecover        = "Could not retrieve app reviews"
 	errorParameterLimit = "Given parameter \"limit\" is not valid, it should be an integer"
 )
 
 func main() {
-	parameters := os.Args
-	if len(parameters) >= 3 && parameters[len(os.Args)-3] == "local" {
-		mode := parameters[len(os.Args)-2]
-		switch mode {
-		case modeHtml:
-			url := parameters[len(os.Args)-1]
-			CrawlHtml(url, true)
-			break
-		case modeApi:
-			break
-		}
-	} else {
-		log.SetOutput(os.Stdout)
+	log.SetOutput(os.Stdout)
 
-		router := mux.NewRouter()
-		router.HandleFunc("/hitec/crawl/app-reviews/google-play/{package_name}/limit/{limit}", getAppReviews).Methods("GET")
-		router.HandleFunc("/hitec/crawl/app-reviews/google-play/static/", getAppReviewsStatic).Methods("GET")
+	router := mux.NewRouter()
+	router.HandleFunc("/hitec/crawl/app-reviews/google-play/{package_name}/limit/{limit}", getAppReviews).Methods("GET")
+	router.HandleFunc("/hitec/crawl/app-reviews/google-play/static/", getAppReviewsStatic).Methods("GET")
 
-		log.Fatal(http.ListenAndServe(":9621", router))
-	}
+	log.Fatal(http.ListenAndServe(":9621", router))
 }
 
 // error handling
@@ -88,7 +73,7 @@ func getAppReviewsStatic(writer http.ResponseWriter, request *http.Request) {
 		if parameter == "target_url" {
 			var crawlError error = nil
 			url := strings.Join(value, "")
-			appReviewResponse.Reviews, crawlError = CrawlHtml(url, true)
+			appReviewResponse.Reviews, crawlError = CrawlHtml(url)
 			if crawlError != nil {
 				appReviewResponse.Status = http.StatusBadRequest
 				appReviewResponse.Error = crawlError.Error()
@@ -106,5 +91,9 @@ func serveResponse(writer http.ResponseWriter, appReviewResponse AppReviewRespon
 	writer.WriteHeader(appReviewResponse.Status)
 	encoder := json.NewEncoder(writer)
 	encoder.SetEscapeHTML(false)
-	encoder.Encode(appReviewResponse)
+
+	errorEncoding := encoder.Encode(appReviewResponse)
+	if errorEncoding != nil {
+		appReviewResponse.Error = errorEncoding.Error()
+	}
 }

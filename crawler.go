@@ -124,7 +124,7 @@ func getReviewAreas(document soup.Root) ([]soup.Root, error) {
 }
 
 // crawls the given link assuming that there are reviews to be found
-func CrawlHtml(link string, arguments ...bool) ([]AppReview, error) {
+func CrawlHtml(link string) ([]AppReview, error) {
 	var appReviews []AppReview
 	var crawlError error = nil
 	var review AppReview
@@ -190,53 +190,50 @@ func Crawl(packageName string, limit int) []AppReview {
 			fmt.Printf("%s ERROR: %s\n", packageName, err)
 			return appReviews
 		}
-		resp.Body.Close()
+		errorClosing := resp.Body.Close()
+		if errorClosing == nil {
 
-		// pre-process the html
-		stringContent := escapedBytesToString(contents)
+			// pre-process the html
+			stringContent := escapedBytesToString(contents)
 
-		// extract data from reviews of the html
-		doc := soup.HTMLParse(stringContent)
+			// extract data from reviews of the html
+			doc := soup.HTMLParse(stringContent)
 
-		// check if the captcha came up
-		captcha := doc.Find("body").GetAttribute("onload")
-		if captcha == "e=document.getElementById('captcha');if(e){e.focus();}" {
-			fmt.Printf("%s QUIT PROGRAMM: captcha needed\n", packageName)
-			return appReviews
-		}
+			// check if the captcha came up
+			captcha := doc.Find("body").GetAttribute("onload")
+			if captcha == "e=document.getElementById('captcha');if(e){e.focus();}" {
+				fmt.Printf("%s QUIT PROGRAMM: captcha needed\n", packageName)
+				return appReviews
+			}
 
-		var reviewsOnPage int
-		reviewsInPage := doc.FindAll(div, class, "single-review")
-		for _, rDoc := range reviewsInPage {
-			review := AppReview{}
-			review.PackageName = packageName
-			// review.Title = getReviewTitle(rDoc)
-			review.Body = getReviewBody(rDoc)
-			review.Date = getReviewDate(rDoc)
-			review.Author = getReviewAuthor(rDoc)
-			review.PermaLink = getReviewPermaLink(rDoc)
-			review.ReviewID = getReviewID(rDoc)
-			review.Rating = getReviewRating(rDoc)
+			var reviewsOnPage int
+			reviewsInPage := doc.FindAll(div, class, "single-review")
+			for _, rDoc := range reviewsInPage {
+				review := AppReview{}
+				review.PackageName = packageName
+				review.Body = getReviewBody(rDoc)
+				review.Date = getReviewDate(rDoc)
+				review.Author = getReviewAuthor(rDoc)
+				review.PermaLink = getReviewPermaLink(rDoc)
+				review.ReviewID = getReviewID(rDoc)
+				review.Rating = getReviewRating(rDoc)
 
-			reviewsOnPage++
-			appReviews = append(appReviews, review)
+				reviewsOnPage++
+				appReviews = append(appReviews, review)
 
-			if limit > 0 && len(appReviews) == limit {
+				if limit > 0 && len(appReviews) == limit {
+					break
+				}
+			}
+
+			if reviewsOnPage == 0 { // no more reviews
 				break
 			}
-		}
 
-		if reviewsOnPage == 0 { // no more reviews
 			break
 		}
-
-		break
 	}
 	return appReviews
-}
-
-func getReviewTitle(doc soup.Root) string {
-	return doc.Find(span, class, "review-title").Text()
 }
 
 func getReviewBody(doc soup.Root) string {
@@ -292,21 +289,6 @@ func getReviewRating(doc soup.Root) int {
 		}
 	}
 	return -1
-}
-
-func getHelpfulness(doc soup.Root) int {
-	fmt.Println("get the helpfulnes score")
-	helpfulnessScoreRaw := doc.Find(div, "aria-label", "Number of times this review was rated helpful").Text()
-	re := regexp.MustCompile("[^0-9]+")
-	i, err := strconv.Atoi(re.ReplaceAllString(helpfulnessScoreRaw, ""))
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	fmt.Print("\nHelpfulness")
-	fmt.Println(i)
-
-	return i
 }
 
 func escapedBytesToString(b []byte) string {
