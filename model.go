@@ -55,6 +55,3 @@ func (review AppReview) fillBySoup(packageName string, documentFull soup.Root, d
 
 	return review
 }
-func (review AppReview) fillByAPI(content bool) {
-
-}
