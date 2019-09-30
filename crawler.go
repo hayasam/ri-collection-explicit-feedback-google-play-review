@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -11,19 +12,144 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anaskhan96/soup"
+	"github.com/OlegSchmidt/soup"
 	"github.com/jehiah/go-strftime"
 )
 
 // common html attributes
 const (
-	div   = "div"
-	span  = "span"
-	class = "class"
-	a     = "a"
+	// common html tags
+	div    = "div"
+	button = "button"
+	span   = "span"
+	class  = "class"
+	a      = "a"
+	meta   = "meta"
+
+	// common html attributes
+	attributeClass    = "class"
+	attributeProperty = "property"
+	attributeContent  = "content"
+	attributeRole     = "role"
+	attributeJsname   = "jsname"
+
+	// string constants
+	propertyValueOpengraphUrl = "og:url"
+	attributeValueImg         = "img"
+
+	// css classes for selection
+	classContentApp           = "LXrl4c"
+	classMainContentBlock     = "W4P4ne"
+	classReviewAreasContainer = "d15Mdf"
+	classReviewAuthor         = "X43Kjb"
+	classReviewDate           = "p2TkOb"
+	classReviewStarFilled     = "vQHuPe"
+	classReviewTitle          = "IEFhEe"
+
+	// jsname values for selection
+	jsnameReviewContentShort = "bN97Pc"
+	jsnameReviewContentFull  = "fbQN7e"
 
 	reviewsURL = "https://play.google.com/store/getreviews?authuser=0"
 )
+
+// parses the website and returns the DOM struct
+func retrieveDoc(url string) (soup.Root, int) {
+	var document soup.Root
+	httpStatus := http.StatusOK
+	// retrieving the html page
+	response, soupError := soup.Get(url)
+	if soupError != nil {
+		fmt.Println("\tcould not reach", url, "because of the following error:")
+		fmt.Println(soupError)
+		httpStatus = http.StatusBadRequest
+	} else {
+		// pre-process html
+		response = strings.Replace(response, "<br>", "\n", -1)
+		response = strings.Replace(response, "<b>", "", -1)
+		response = strings.Replace(response, "</b>", "", -1)
+		document = soup.HTMLParse(response)
+	}
+
+	return document, httpStatus
+}
+
+// returns the container where the reviews are stored
+func GetReviewContainer(document soup.Root) (soup.Root, error) {
+	var container soup.Root
+	var containerError error = nil
+	appContainers := document.FindAll(div, class, classContentApp)
+	if len(appContainers) >= 1 {
+		mainContentBlock := appContainers[len(appContainers)-1].Find(div, class, classMainContentBlock)
+		if mainContentBlock.Error == nil {
+			mainContentBlockChildren := mainContentBlock.Children()
+			if len(mainContentBlockChildren) >= 2 {
+				containerBlockReviewChildren := mainContentBlockChildren[1].Children()
+				if len(containerBlockReviewChildren) >= 3 {
+					container = containerBlockReviewChildren[2]
+				} else {
+					containerError = errors.New("2nd child of main container block for reviews should contain at least 3 children")
+				}
+			} else {
+				containerError = errors.New("main container block for reviews (2nd main content block) should contain at least 2 children")
+			}
+		} else {
+			containerError = errors.New("couldn't find the main content blocks in the main container, looking for first <div class=\"" + classMainContentBlock + "\"></div>")
+		}
+	} else {
+		containerError = errors.New("couldn't find the main container of the app, looking for last <div class=\"" + classContentApp + "\"></div>")
+	}
+
+	return container, containerError
+}
+
+// returns the 3 main areas of the review : headline (stars, name, date), review itself and the reply from developer
+func getReviewAreas(document soup.Root) ([]soup.Root, error) {
+	var reviewAreas []soup.Root
+	var reviewAreasError error = nil
+
+	areaContainer := document.Find(div, class, classReviewAreasContainer)
+	if areaContainer.Error == nil {
+		areaContainerChildren := areaContainer.Children()
+		if len(areaContainerChildren) >= 2 {
+			reviewAreas = areaContainerChildren
+		} else {
+			reviewAreasError = errors.New("mode \"html\" : <div class=\"" + classReviewAreasContainer + "\"></div> should contain at least 2 children")
+		}
+	} else {
+		reviewAreasError = errors.New("mode \"html\" : couldn't find container for the 3 areas of the review, looking for <div class=\"" + classReviewAreasContainer + "\"></div>")
+	}
+
+	return reviewAreas, reviewAreasError
+}
+
+// crawls the given link assuming that there are reviews to be found
+func CrawlHtml(link string) ([]AppReview, error) {
+	var appReviews []AppReview
+	var crawlError error = nil
+	var review AppReview
+
+	appPage, HttpStatus := retrieveDoc(link)
+	if HttpStatus == http.StatusOK {
+		packageName, packageNameError := getHtmlReviewPackageName(appPage)
+		if packageNameError == nil {
+			reviewBlock, reviewBlockError := GetReviewContainer(appPage)
+			if reviewBlockError == nil {
+				reviewElements := reviewBlock.Children()
+				for position := range reviewElements {
+					review = AppReview{}.fillBySoup(packageName, appPage, reviewElements[position])
+					appReviews = append(appReviews, review)
+				}
+			} else {
+				crawlError = reviewBlockError
+			}
+		}
+	} else {
+		crawlError = errors.New("given link couldn't be parsed, please check the online availability")
+	}
+
+	return appReviews, crawlError
+}
 
 // Crawl crawls the reviews of a given app until a given limit is reached
 func Crawl(packageName string, limit int) []AppReview {
@@ -64,53 +190,50 @@ func Crawl(packageName string, limit int) []AppReview {
 			fmt.Printf("%s ERROR: %s\n", packageName, err)
 			return appReviews
 		}
-		resp.Body.Close()
+		errorClosing := resp.Body.Close()
+		if errorClosing == nil {
 
-		// pre-process the html
-		stringContent := escapedBytesToString(contents)
+			// pre-process the html
+			stringContent := escapedBytesToString(contents)
 
-		// extract data from reviews of the html
-		doc := soup.HTMLParse(stringContent)
+			// extract data from reviews of the html
+			doc := soup.HTMLParse(stringContent)
 
-		// check if the captcha came up
-		captcha := doc.Find("body").Attrs()["onload"]
-		if captcha == "e=document.getElementById('captcha');if(e){e.focus();}" {
-			fmt.Printf("%s QUIT PROGRAMM: captcha needed\n", packageName)
-			return appReviews
-		}
+			// check if the captcha came up
+			captcha := doc.Find("body").GetAttribute("onload")
+			if captcha == "e=document.getElementById('captcha');if(e){e.focus();}" {
+				fmt.Printf("%s QUIT PROGRAMM: captcha needed\n", packageName)
+				return appReviews
+			}
 
-		var reviewsOnPage int
-		reviewsInPage := doc.FindAll(div, class, "single-review")
-		for _, rDoc := range reviewsInPage {
-			review := AppReview{}
-			review.PackageName = packageName
-			// review.Title = getReviewTitle(rDoc)
-			review.Body = getReviewBody(rDoc)
-			review.Date = getReviewDate(rDoc)
-			review.Author = getReviewAuthor(rDoc)
-			review.PermaLink = getReviewPermaLink(rDoc)
-			review.ReviewID = getReviewID(rDoc)
-			review.Rating = getReviewRating(rDoc)
+			var reviewsOnPage int
+			reviewsInPage := doc.FindAll(div, class, "single-review")
+			for _, rDoc := range reviewsInPage {
+				review := AppReview{}
+				review.PackageName = packageName
+				review.Body = getReviewBody(rDoc)
+				review.Date = getReviewDate(rDoc)
+				review.Author = getReviewAuthor(rDoc)
+				review.PermaLink = getReviewPermaLink(rDoc)
+				review.ReviewID = getReviewID(rDoc)
+				review.Rating = getReviewRating(rDoc)
 
-			reviewsOnPage++
-			appReviews = append(appReviews, review)
+				reviewsOnPage++
+				appReviews = append(appReviews, review)
 
-			if limit > 0 && len(appReviews) == limit {
+				if limit > 0 && len(appReviews) == limit {
+					break
+				}
+			}
+
+			if reviewsOnPage == 0 { // no more reviews
 				break
 			}
-		}
 
-		if reviewsOnPage == 0 { // no more reviews
 			break
 		}
-
-		break
 	}
 	return appReviews
-}
-
-func getReviewTitle(doc soup.Root) string {
-	return doc.Find(span, class, "review-title").Text()
 }
 
 func getReviewBody(doc soup.Root) string {
@@ -139,15 +262,15 @@ func getReviewAuthor(doc soup.Root) string {
 }
 
 func getReviewPermaLink(doc soup.Root) string {
-	return "https://play.google.com" + doc.Find(a, class, "reviews-permalink").Attrs()["href"]
+	return "https://play.google.com" + doc.Find(a, class, "reviews-permalink").GetAttribute("href")
 }
 
 func getReviewID(doc soup.Root) string {
-	return doc.Find(div, class, "review-header").Attrs()["data-reviewid"]
+	return doc.Find(div, class, "review-header").GetAttribute("data-reviewid")
 }
 
 func getReviewRating(doc soup.Root) int {
-	ratingRaw := doc.Find(div, class, "current-rating").Attrs()["style"]
+	ratingRaw := doc.Find(div, class, "current-rating").GetAttribute("style")
 	re := regexp.MustCompile("[^0-9]+")
 	i, err := strconv.Atoi(re.ReplaceAllString(ratingRaw, ""))
 	if err != nil {
@@ -166,21 +289,6 @@ func getReviewRating(doc soup.Root) int {
 		}
 	}
 	return -1
-}
-
-func getHelpfulness(doc soup.Root) int {
-	fmt.Println("get the helpfulnes score")
-	helpfulnessScoreRaw := doc.Find(div, "aria-label", "Number of times this review was rated helpful").Text()
-	re := regexp.MustCompile("[^0-9]+")
-	i, err := strconv.Atoi(re.ReplaceAllString(helpfulnessScoreRaw, ""))
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	fmt.Print("\nHelpfulness")
-	fmt.Println(i)
-
-	return i
 }
 
 func escapedBytesToString(b []byte) string {
