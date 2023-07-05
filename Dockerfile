@@ -1,6 +1,6 @@
 #build stage
 
-FROM golang:1.9
+FROM golang:bookworm
 WORKDIR /go/src/app
 COPY . .
 RUN go get -d -v ./...
