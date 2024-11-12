@@ -1,6 +1,6 @@
 #build stage
 
-FROM golang:1.9
+FROM golang:1.23.3
 WORKDIR /go/src/app
 COPY . .
 RUN go get -d -v ./...
